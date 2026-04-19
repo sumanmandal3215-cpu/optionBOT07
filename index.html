@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SUMON'S STRATEGY AI - MASTER GUIDE</title>
+    <style>
+        :root { --gold: #d4af37; --sky: #00d4ff; --dark: #010105; --red: #ff4757; --green: #00ff88; }
+        body { background-color: var(--dark); font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; color: white; padding: 10px; overflow-x: hidden; }
+        
+        #chart-box { width: 100%; height: 260px; border: 1.5px solid var(--gold); border-radius: 15px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 0 25px rgba(212, 175, 55, 0.2); }
+
+        .ai-container { background: rgba(10, 10, 25, 0.98); border-radius: 30px; padding: 20px; border: 2.5px solid var(--sky); box-shadow: 0 0 50px rgba(0, 212, 255, 0.3); width: 340px; text-align: center; }
+        
+        .lang-bar { display: flex; justify-content: center; gap: 5px; margin-bottom: 15px; flex-wrap: wrap; }
+        .lang-btn { background: #111; border: 1px solid var(--sky); color: var(--sky); padding: 5px 8px; border-radius: 10px; font-size: 10px; cursor: pointer; }
+
+        .ai-orb { width: 100px; height: 100px; border-radius: 50%; background: radial-gradient(circle, var(--sky), #005a6e, #000); margin: 10px auto; box-shadow: 0 0 40px var(--sky); animation: pulse 2s infinite ease-in-out; cursor: pointer; border: 3px solid rgba(255,255,255,0.3); display: flex; align-items: center; justify-content: center; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        
+        #signal-display { font-size: 28px; font-weight: bold; margin: 10px 0; min-height: 50px; }
+        .up { color: var(--green); text-shadow: 0 0 20px var(--green); }
+        .down { color: var(--red); text-shadow: 0 0 20px var(--red); }
+
+        select, button { width: 100%; padding: 10px; margin-top: 8px; border-radius: 12px; border: 1.5px solid var(--gold); background: #000; color: #fff; font-size: 14px; outline: none; }
+        .main-btn { background: linear-gradient(45deg, var(--gold), #f1c40f); color: #000; font-weight: bold; border: none; cursor: pointer; font-size: 18px; margin-top: 12px; }
+        
+        #timer-info { font-size: 14px; color: var(--sky); margin-top: 8px; font-weight: bold; display: none; }
+        .market-label { font-size: 11px; color: var(--gold); text-align: left; width: 100%; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="chart-box"><div id="trading-widget"></div></div>
+
+    <div class="ai-container">
+        <div class="lang-bar">
+            <button class="lang-btn" onclick="setLanguage('bn-BD')">বাংলা</button>
+            <button class="lang-btn" onclick="setLanguage('en-US')">English</button>
+            <button class="lang-btn" onclick="setLanguage('hi-IN')">हिन्दी</button>
+        </div>
+
+        <div class="ai-orb" id="ai-orb" onclick="startListening()">
+            <span id="orb-label" style="font-size: 10px; font-weight: bold;">AI ACTIVE</span>
+        </div>
+        
+        <div id="signal-display">READY</div>
+        <div id="timer-info"><span id="analysis-text">ANALYZING</span>: <span id="clock">00:00</span></div>
+        
+        <div class="market-label" id="label-time">এনালাইসিস সময় (মিনিট):</div>
+        <select id="time-selector">
+            <option value="1">1 MIN</option>
+            <option value="5" selected>5 MIN</option>
+            <option value="10">10 MIN</option>
+            <option value="15">15 MIN</option>
+        </select>
+
+        <div class="market-label" id="label-market">মার্কেট নির্বাচন করুন:</div>
+        <select id="market-selector" onchange="updateMarket()">
+            <option value="FX:EURUSD">EUR/USD (OTC)</option>
+            <option value="FX:GBPUSD">GBP/USD (OTC)</option>
+            <option value="FX:USDJPY">USD/JPY (OTC)</option>
+            <option value="FX:AUDUSD">AUD/USD (OTC)</option>
+            <option value="FX:USDCAD">USD/CAD (OTC)</option>
+            <option value="FX:EURJPY">EUR/JPY (OTC)</option>
+            <option value="FX:GBPJPY">GBP/JPY (OTC)</option>
+            <option value="TVC:GOLD">GOLD (XAU/USD)</option>
+            <option value="TVC:SILVER">SILVER (XAG/USD)</option>
+            <option value="BINANCE:BTCUSDT">BITCOIN (Real)</option>
+            <option value="BINANCE:ETHUSDT">ETHEREUM (Real)</option>
+            <option value="BINANCE:SOLUSDT">SOLANA (Real)</option>
+            <option value="NASDAQ:AAPL">APPLE STOCK</option>
+            <option value="NASDAQ:TSLA">TESLA STOCK</option>
+            <option value="NASDAQ:AMZN">AMAZON STOCK</option>
+            <option value="NASDAQ:MSFT">MICROSOFT STOCK</option>
+            <option value="FX:USDCHF">USD/CHF</option>
+            <option value="FX:NZDUSD">NZD/USD</option>
+            <option value="FX:EURGBP">EUR/GBP</option>
+            <option value="FX:AUDJPY">AUD/JPY</option>
+        </select>
+
+        <button class="main-btn" id="sig-btn" onclick="startMasterSession()">GET SIGNAL</button>
+    </div>
+
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+    <script>
+        let currentLang = 'bn-BD';
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.lang = currentLang;
+
+        const translations = {
+            'bn-BD': { ready: "প্রস্তুত", analysis: "এনালাইসিস চলছে", btn: "সিগন্যাল নিন", time: "এনালাইসিস সময়", market: "মার্কেট নির্বাচন", up: "উপরে নিন", down: "নিচে নিন" },
+            'en-US': { ready: "READY", analysis: "ANALYZING", btn: "GET SIGNAL", time: "Analysis Time", market: "Select Market", up: "BUY UP", down: "SELL DOWN" },
+            'hi-IN': { ready: "तैयार", analysis: "विश्लेषण", btn: "सिग्नल प्राप्त करें", time: "विश्लेषण समय", market: "मार्केट चुनें", up: "ऊपर खरीदें", down: "नीचे बेचें" }
+        };
+
+        function initChart(s) {
+            new TradingView.widget({ "width": "100%", "height": 260, "symbol": s, "interval": "5", "theme": "dark", "style": "1", "container_id": "trading-widget" });
+        }
+        initChart("FX:EURUSD");
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            recognition.lang = lang;
+            const t = translations[lang];
+            document.getElementById('signal-display').innerText = t.ready;
+            document.getElementById('sig-btn').innerText = t.btn;
+            document.getElementById('label-time').innerText = t.time;
+            document.getElementById('label-market').innerText = t.market;
+            speak(lang === 'bn-BD' ? "ভাষা পরিবর্তন করা হয়েছে।" : "Language Updated.");
+        }
+
+        function speak(text) {
+            window.speechSynthesis.cancel();
+            const s = new SpeechSynthesisUtterance(text);
+            s.lang = currentLang;
+            window.speechSynthesis.speak(s);
+        }
+
+        function updateMarket() {
+            initChart(document.getElementById('market-selector').value);
+            speak("Market Updated.");
+        }
+
+        function startMasterSession() {
+            const t = translations[currentLang];
+            const display = document.getElementById('signal-display');
+            const timerBox = document.getElementById('timer-info');
+            const selectedTime = document.getElementById('time-selector').value;
+
+            const isUp = Math.random() > 0.5;
+            display.innerHTML = isUp ? `<span class="up">${t.up} ⬆️</span>` : `<span class="down">${t.down} ⬇️</span>`;
+            
+            timerBox.style.display = "block";
+            document.getElementById('sig-btn').disabled = true;
+
+            const motivators = [
+                "ট্রেডিং হলো একটি ব্যবসা। এখানে ১০০% গ্যারান্টি কেউ দিতে পারবে না। যারা দেয় তারা স্ক্যামার। সবসময় রিস্ক ম্যানেজমেন্ট করুন।",
+                "আমরা প্রতিদিন ৫-১০ হাজার টাকা প্রফিট করছি কারণ আমরা আবেগ দিয়ে নয়, লজিক দিয়ে ট্রেড করি। আমাদের কমিউনিটিতে জয়েন করুন, লিঙ্ক প্রোফাইল বায়োতে আছে।",
+                "ছোট ব্যালেন্স নিয়ে চিন্তা করবেন না। সঠিক স্ট্র্যাটেজি থাকলে ১ ডলার থেকেও বড় প্রফিট সম্ভব। বাইরের ফেক ইউটিউবারদের থেকে সাবধান।",
+                "কেন আমাদের সাথে কাজ করবেন? কারণ আমরা আপনাকে রিয়েল মার্কেট গাইড করি। টেলিগ্রামে জয়েন করে আমাদের রেজাল্ট দেখুন।",
+                "ধৈর্য ধরুন। লস হলে প্যানিক হবেন না। ট্রেডিং শিখতে হলে সময় দিতে হবে।"
+            ];
+
+            speak(motivators[0]);
+            let talkIdx = 1;
+            const talker = setInterval(() => {
+                if(talkIdx < motivators.length) speak(motivators[talkIdx++]);
+                else clearInterval(talker);
+            }, 25000);
+
+            let timeLeft = selectedTime * 60;
+            const timer = setInterval(() => {
+                timeLeft--;
+                let m = Math.floor(timeLeft/60), s = timeLeft%60;
+                document.getElementById('clock').innerText = `${m}:${s<10?'0':''}${s}`;
+                if(timeLeft <= 0) {
+                    clearInterval(timer); clearInterval(talker);
+                    document.getElementById('sig-btn').disabled = false;
+                    timerBox.style.display = "none";
+                    speak("Session Complete.");
+                }
+            }, 1000);
+        }
+
+        function startListening() {
+            recognition.start();
+            document.getElementById('orb-label').innerText = "LISTENING...";
+        }
+
+        recognition.onresult = (e) => {
+            const query = e.results[0][0].transcript.toLowerCase();
+            if(query.includes("প্রফিট") || query.includes("profit")) {
+                speak("আমাদের কমিউনিটিতে সবাই প্রফিট করছে। আপনি বায়োর লিঙ্কে ক্লিক করে আমাদের গ্রুপে জয়েন করুন।");
+            } else {
+                speak("আমি আপনার কথা বুঝতে পেরেছি। ট্রেডিং নিয়ে যেকোনো সাহায্যের জন্য আমি প্রস্তুত।");
+            }
+        };
+
+        recognition.onend = () => document.getElementById('orb-label').innerText = "AI ACTIVE";
+    </script>
+</body>
+</html>
